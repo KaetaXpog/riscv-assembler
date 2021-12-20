@@ -1,5 +1,7 @@
 import pytest
 from pathlib import Path
+
+import sys
 from riscv_assembler.convert import *
 from riscv_assembler.utils import *
 #TESTS

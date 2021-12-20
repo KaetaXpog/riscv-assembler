@@ -132,7 +132,7 @@ class AssemblyConverter:
 		#get instruction data and register mapping
 		self.r_map, self.instr_data = self.__pre()
 
-	def __str__():
+	def __str__(self):
 		return "AssemblyConverter(output_type={}, nibble={}, filename={}, hexmode={})".format(
 			self.output_type, self.nibble,
 			self.filename, self.hexMode
@@ -507,7 +507,7 @@ class AssemblyConverter:
 			for r in res:
 				for e in r:
 					if int(e) != 0 and int(e) != 1:
-						raise Not__binaryNumber(r)
+						raise NotBinaryNumber(r)
 				if len(r) != 32:
 					raise WrongInstructionSize(len(r))
 
@@ -589,8 +589,6 @@ class AssemblyConverter:
 		return self.__post()
 
 	def convert_ret(self,filename):
-		if filename[-2::] != ".s":
-			raise WrongFileType()
 		self.filename = filename
 		#self.r_map, self.instr_data = self.__pre()
 		self.code = self.__read_in_advance()
@@ -603,3 +601,6 @@ class AssemblyConverter:
 			for i in range(len(self.instructions)):
 				self.instructions[i] = nibbleForm(self.instructions[i])
 		return self.instructions
+	def write_to_file(self,fname):
+		with open(fname,'w') as f:
+			f.write('\n'.join(self.instructions))
