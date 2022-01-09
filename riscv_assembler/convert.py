@@ -103,7 +103,8 @@ class AssemblyConverter:
 		"mv", "j", "jr", 
 		"la", "neg", "nop", 
 		"not", "ret", "seqz", 
-		"snez", "bgt", "ble"
+		"snez", "bgt", "ble",
+		"csrw", "csrr"
 	]
 
 	all_instr = flatten([
@@ -240,7 +241,10 @@ class AssemblyConverter:
 			raise WrongInstructionType()
 
 		opcode = 0;f3 = 1;f7 = 2
-		mod_imm = int(imm) - ((int(imm)>>12)<<12) # imm[11:0]
+
+		# patch the int to enable transform form "0xYYY" string to int
+		intPatched = lambda string: int(string, 16) if string.startswith("0x") else int(string)	
+		mod_imm = intPatched(imm) - ((intPatched(imm)>>12)<<12) # imm[11:0]
 		return "".join([
 			#self.__binary(int(imm),12),
 			self.__binary(mod_imm,12),
@@ -475,12 +479,18 @@ class AssemblyConverter:
 			#print(clean[0]  + " pseudo")
 
 			if clean[0] == "li": #need to consider larger than 12 bits
-				#res = self.I_type("addi",self.__reg_map(clean[1]), self.calcJump(clean[2],i), self.__reg_map(clean[1]))
+				# TODO: a bug here?
 				if int(clean[2]) > 2**11:
 					res.append(self.U_type(instr='lui', imm=clean[2], rd=self.__reg_map(clean[1])))
 				res.append(self.I_type("addi",self.__reg_map(clean[1]), clean[2], self.__reg_map(clean[1])))
 			elif clean[0] == "nop":
 				res.append(self.I_type("addi", self.__reg_map("x0"), "0", self.__reg_map("x0")))
+			elif clean[0] == "csrr":
+				res.append(self.I_type("CSRRS",self.__reg_map("x0"), clean[2],
+					self.__reg_map(clean[1])))
+			elif clean[0] == "csrw":
+				res.append(self.I_type("CSRRW",self.__reg_map(clean[2]),
+					clean[1], self.__reg_map("x0")))
 			elif clean[0] == "mv":
 				res.append(self.I_type("addi", self.__reg_map(clean[2]), "0", self.__reg_map(clean[1])))
 			elif clean[0] == "not":
