@@ -39,6 +39,7 @@ class WrongInstructionType( Exception ):
 #-----------------------------------------------------------------------------------------		
 #-----------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------
+getBitField = lambda imm,i,j,p: (imm - (imm>>j+1<<j+1))>>i<<p
 
 #flatten__ an array
 def flatten(x):
@@ -284,10 +285,17 @@ class AssemblyConverter:
 
 		opcode = 0;f3 = 1;f7 = 2
 
-		mod_imm = (int(imm) - ((int(imm) >> 12) << 12)) >> 6 # imm[12]
-		mod_imm += (int(imm) - ((int(imm) >> 11) >> 11)) >> 5 # imm[12|10:5]
-		mod_imm_2 = (int(imm) - ((int(imm) >> 5) << 5)) # imm[4:1]
-		mod_imm_2 += (int(imm) - ((int(imm) >> 11) << 11)) >> 10 # imm[4:1|11]
+		# this is WRONG TOO
+		# mod_imm = (int(imm) - ((int(imm) >> 12) << 12)) >> 6 # imm[12]
+		# mod_imm += (int(imm) - ((int(imm) >> 11) >> 11)) >> 5 # imm[12|10:5]
+		# mod_imm_2 = (int(imm) - ((int(imm) >> 5) << 5)) # imm[4:1]
+		# mod_imm_2 += (int(imm) - ((int(imm) >> 11) << 11)) >> 10 # imm[4:1|11]
+
+		imm=int(imm)
+		mod_imm = getBitField(imm,12,12,6)
+		mod_imm += getBitField(imm,5,10,0)
+		mod_imm_2 = getBitField(imm,1,4,1)
+		mod_imm_2 = getBitField(imm,11,11,0)
 
 		return "".join([
 			#"".join([
