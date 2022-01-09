@@ -40,6 +40,13 @@ class WrongInstructionType( Exception ):
 #-----------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------
 getBitField = lambda imm,i,j,p: (imm - (imm>>j+1<<j+1))>>i<<p
+orgInt = int
+def intPatched(stringOrInt: str|int) -> int:
+	if isinstance(stringOrInt, str) and stringOrInt.startswith("0x"):
+		return orgInt(stringOrInt, 16)
+	else:
+		return orgInt(stringOrInt)
+int = intPatched
 
 #flatten__ an array
 def flatten(x):
@@ -244,7 +251,6 @@ class AssemblyConverter:
 		opcode = 0;f3 = 1;f7 = 2
 
 		# patch the int to enable transform form "0xYYY" string to int
-		intPatched = lambda string: int(string, 16) if string.startswith("0x") else int(string)	
 		mod_imm = intPatched(imm) - ((intPatched(imm)>>12)<<12) # imm[11:0]
 		return "".join([
 			#self.__binary(int(imm),12),
@@ -292,10 +298,11 @@ class AssemblyConverter:
 		# mod_imm_2 += (int(imm) - ((int(imm) >> 11) << 11)) >> 10 # imm[4:1|11]
 
 		imm=int(imm)
+		print("DEBUG imm {}".format(imm))
 		mod_imm = getBitField(imm,12,12,6)
 		mod_imm += getBitField(imm,5,10,0)
 		mod_imm_2 = getBitField(imm,1,4,1)
-		mod_imm_2 = getBitField(imm,11,11,0)
+		mod_imm_2 += getBitField(imm,11,11,0)
 
 		return "".join([
 			#"".join([
@@ -323,7 +330,7 @@ class AssemblyConverter:
 			raise WrongInstructionType()
 		opcode = 0;f3 = 1;f7 = 2
 
-		mod_imm = (int(imm) >> 12)
+		mod_imm = int(imm) >> 12
 		return "".join([
 			#self.__binary(int(imm),32)[::-1][12:32][::-1],
 			self.__binary(mod_imm,20),
@@ -512,7 +519,9 @@ class AssemblyConverter:
 				# TODO: a bug here?
 				if int(clean[2]) > 2**11:
 					res.append(self.U_type(instr='lui', imm=clean[2], rd=self.__reg_map(clean[1])))
-				res.append(self.I_type("addi",self.__reg_map(clean[1]), clean[2], self.__reg_map(clean[1])))
+					res.append(self.I_type("addi",self.__reg_map(clean[1]), clean[2], self.__reg_map(clean[1])))
+				else:
+					res.append(self.I_type("addi",self.__reg_map("x0"), clean[2], self.__reg_map(clean[1])))
 			elif clean[0] == "nop":
 				res.append(self.I_type("addi", self.__reg_map("x0"), "0", self.__reg_map("x0")))
 			elif clean[0] == "csrr":
