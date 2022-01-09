@@ -151,10 +151,10 @@ class AssemblyConverter:
 	def calcJump(self, x,line_num):
 		#calc line number of func
 		for i in range(len(self.code)):
-			if x+":" == self.code[i]:
+			if x+":" in self.code[i]:
 				return (i - line_num)*4 #how many instructions to jump ahead/behind
 		#print("Address not found")
-		return -10 #if not found
+		raise Exception("can not find label")
 
 	def __binary(self, x, size):
 		byte_num = m.ceil(size/8)
@@ -331,11 +331,20 @@ class AssemblyConverter:
 			raise WrongInstructionType()
 
 		opcode = 0;f3 = 1;f7 = 2
+		print("DEBUG: imm {}".format(imm))
 
-		mod_imm = ((int(imm) - ((int(imm) >> 20) << 20)) >> 19) << 19 # imm[20]
-		mod_imm += (int(imm) - ((int(imm) >> 10) << 10)) >> 1 # imm[20|10:1]
-		mod_imm += (int(imm) - ((int(imm) >> 11) << 11)) >> 10 # imm[20|10:1|11]
-		mod_imm += (int(imm) - ((int(imm) >> 19) << 19)) >> 12 # imm[20|10:1|11|19:12]
+		# THIS IS WRONG
+		# mod_imm = ((int(imm) - ((int(imm) >> 20) << 20)) >> 19) << 19 # imm[20]
+		# mod_imm += (int(imm) - ((int(imm) >> 10) << 10)) >> 1 # imm[20|10:1]
+		# mod_imm += (int(imm) - ((int(imm) >> 11) << 11)) >> 10 # imm[20|10:1|11]
+		# mod_imm += (int(imm) - ((int(imm) >> 19) << 19)) >> 12 # imm[20|10:1|11|19:12]
+
+		getBitField = lambda imm,i,j,p: (imm - (imm>>j+1<<j+1))>>i<<p
+		imm = int(imm)
+		mod_imm = getBitField(imm,20,20,19)
+		mod_imm += getBitField(imm,1,10,9)
+		mod_imm += getBitField(imm,11,11,8)
+		mod_imm += getBitField(imm,12,19,0)
 		return  "".join([
 			#"".join([
 			#	self.__binary(int(imm),21)[::-1][20][::-1], self.__binary(int(imm),21)[::-1][1:11][::-1],
@@ -406,8 +415,18 @@ class AssemblyConverter:
 				continue
 			code.append(line.strip())
 			line = file.readline()
+		
+		acc=""
+		res=[]
+		for i in code:
+			if ':' in i:
+				assert acc==""
+				acc=i
+			else:
+				res.append(acc+i)
+				acc=""
 
-		return code
+		return res
 
 	#retrieve instructions
 	def __get_instructions(self):
@@ -427,6 +446,9 @@ class AssemblyConverter:
 		res = []
 		line = self.__handle_inline_comments(line)
 		line = line.strip()
+		if ':' in line:		# if this line has a label
+			assert len(line.split(":")) == 2
+			line = line.split(":")[1]
 		#print(line)
 		clean = flatten([elem.replace("\n","").split(",") for elem in line.split(" ")])
 
@@ -603,6 +625,7 @@ class AssemblyConverter:
 		#self.r_map, self.instr_data = self.__pre()
 		self.code = self.__read_in_advance()
 		self.instructions = self.__get_instructions()
+		print("DEBUG: {}".format(self.code))
 
 		if self.hexMode:
 			for i in range(len(self.instructions)):
